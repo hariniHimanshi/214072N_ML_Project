@@ -1,0 +1,327 @@
+================================================================================
+  COLOMBO HEAVY RAIN PREDICTION — PROJECT EXPLANATION
+  ML Assignment | Dataset: daily_colombo_weather.csv (NOAA)
+================================================================================
+
+
+THE DATASET
+-----------
+The raw input is data/daily_colombo_weather.csv — a NOAA climate dataset for
+the Colombo Observatory, Sri Lanka, containing 5,969 daily records from
+September 2007 to December 2025 with these columns:
+
+  DATE  — Calendar date
+  PRCP  — Precipitation (mm)
+  TAVG  — Average temperature (degrees C)
+  TMAX  — Max temperature (degrees C)
+  TMIN  — Min temperature (degrees C)
+
+
+THE PROBLEM
+-----------
+Goal: Predict whether NEXT WEEK will be a heavy-rain week (total rainfall > 15mm).
+
+This is a binary classification problem:
+  Rainy_Next_Week = 1  -->  Heavy rain expected
+  Rainy_Next_Week = 0  -->  Dry week expected
+
+
+================================================================================
+SCRIPT 1 — PREPROCESSING  (src/01_preprocessing.py)
+================================================================================
+
+This is the most critical step. Here is exactly what it does:
+
+STEP 1: Handle Missing Values
+  - TMAX and TMIN: Imputed using a 7-day rolling median.
+    (If temp was 31°C yesterday, it is likely ~31°C today.)
+  - PRCP: Missing days filled with 0mm.
+    (No rain report = no rain — standard meteorological practice.)
+  - Used forward fill / backward fill to handle any remaining edge gaps.
+
+STEP 2: Fix Outliers
+  - Some TMAX values were impossibly high (e.g., 38.5°C in Colombo — sensor error).
+  - Capped TMAX at 37°C using pandas .clip(upper=37).
+
+STEP 3: Aggregate Daily --> Weekly
+  Daily data is too noisy to predict from directly. Instead, data was grouped
+  by ISO week number and summarised into these features:
+
+    prcp_sum   — Total rainfall that week (mm)
+    tavg_mean  — Average temperature (degrees C)
+    tmax_mean  — Average daily max temperature
+    tmin_mean  — Average daily min temperature
+    prcp_days  — Number of days it rained that week
+    temp_range — tmax_mean minus tmin_mean
+
+STEP 4: Feature Engineering
+  Lag features (the model needs past context to predict the future):
+    lag1_prcp      — last week's total rainfall
+    lag2_prcp      — two weeks ago total rainfall
+    lag1_tavg      — last week's average temperature
+    lag2_tavg      — two weeks ago average temperature
+    lag1_prcp_days — how many days it rained last week
+
+  Seasonal features (captures the annual monsoon cycle):
+    week_sin = sin(2 * pi * week_number / 52)
+    week_cos = cos(2 * pi * week_number / 52)
+    month    = numeric month (1-12)
+
+STEP 5: Create the Target Variable
+  Rainy_Next_Week = 1  if  next week's prcp_sum > 15mm
+                  = 0  otherwise
+  This is computed by shifting prcp_sum backward by 1 week.
+
+STEP 6: Chronological Train / Val / Test Split
+  Because this is time-series data, shuffling would be cheating
+  (future weeks cannot train the model in real life):
+
+    Train      : 70%  -->  641 weekly samples  (2007-2021)
+    Validation : 15%  -->  137 samples          (used for tuning)
+    Test       : 15%  -->  138 samples          (final honest evaluation)
+
+Output files:
+  data/processed/train.csv
+  data/processed/val.csv
+  data/processed/test.csv
+  data/processed/weekly_features.csv
+  data/processed/metadata.json
+
+
+================================================================================
+SCRIPT 2 — EDA  (src/02_eda.py)
+================================================================================
+
+Six publication-quality figures were generated to understand the data:
+
+  eda_01_missing_values.png
+    --> Bar chart + null heatmap showing where gaps exist in the raw data.
+        (~8% of TMAX/TMIN values are missing.)
+
+  eda_02_time_series.png
+    --> 18-year trends in temperature and rainfall.
+        The two monsoon seasons are clearly visible as annual spikes.
+
+  eda_03_seasonal_boxplots.png
+    --> Monthly box plots confirming Sri Lanka's Oct-Dec and May-Jun wet seasons.
+
+  eda_04_target_distribution.png
+    --> Class balance: ~55% rainy weeks / ~45% dry — nearly balanced.
+        A donut chart shows the ratio visually.
+
+  eda_05_correlation_heatmap.png
+    --> lag1_prcp and prcp_sum have the strongest correlation with the target.
+        Temperature features have weaker but still informative correlations.
+
+  eda_06_feature_distributions.png
+    --> Violin plots showing rainy vs dry weeks differ significantly in
+        prcp_sum, prcp_days, and lag features — confirming these are
+        useful predictors.
+
+
+================================================================================
+SCRIPT 3 — MODEL TRAINING  (src/03_train_model.py)
+================================================================================
+
+ALGORITHM: XGBoost Classifier
+  Chosen because:
+    - It is NOT covered in lectures (required by assignment brief)
+    - Excellent performance on tabular data
+    - Handles class imbalance via scale_pos_weight parameter
+    - Native SHAP support for explainability
+
+HYPERPARAMETER TUNING
+  Used RandomizedSearchCV with:
+    - 40 random parameter combinations tested
+    - 5-fold StratifiedKFold cross-validation
+      (stratified = class ratio is preserved in each fold)
+    - Optimized on ROC-AUC score
+
+  Best hyperparameters found:
+    n_estimators    = 300
+    max_depth       = 4
+    learning_rate   = 0.01
+    subsample       = 0.7
+    colsample_bytree= 0.7
+    min_child_weight= 5
+    reg_alpha       = 0.5
+    reg_lambda      = 2
+
+RESULTS
+  Metric         | Validation |   Test
+  ---------------|------------|----------
+  Accuracy       |   68.6%    |   79.7%
+  F1 Macro       |   0.670    |   0.787
+  F1 (Rainy)     |   0.743    |   0.741
+  F1 (Dry)       |   0.598    |   0.833
+  ROC-AUC        |   0.762    |   0.852  <-- EXCEEDS 0.70 target
+
+  A ROC-AUC of 0.852 means the model correctly ranks a random rainy week
+  above a random dry week 85.2% of the time.
+
+Output files:
+  models/xgb_model.pkl       <-- saved trained model
+  reports/metrics.json       <-- all metrics
+  reports/figures/03_confusion_matrices.png
+  reports/figures/03_roc_pr_curves.png
+  reports/figures/03_xgb_feature_importance.png
+
+
+================================================================================
+SCRIPT 4 — EXPLAINABILITY  (src/04_explainability.py)
+================================================================================
+
+This answers: "WHY did the model make this prediction?"
+
+SHAP (SHapley Additive exPlanations)
+  Uses XGBoost's built-in TreeSHAP (pred_contribs=True) to decompose each
+  prediction into per-feature contributions.
+
+  04_shap_bar_global.png
+    --> Which features matter most ON AVERAGE across all test weeks.
+        lag1_prcp and prcp_sum dominate — the model correctly learned that
+        recent rainfall history is the strongest predictor.
+
+  04_shap_waterfall_tp.png
+    --> For one correctly-predicted rainy week: shows which features pushed
+        the prediction toward "rainy" (red) vs away from it (blue).
+
+  04_shap_waterfall_tn.png
+    --> Same analysis but for a correctly-predicted dry week.
+
+PARTIAL DEPENDENCE PLOTS (PDP)
+  Shows the average effect of one feature on the prediction while holding
+  all others constant.
+
+  04_pdp_top3_features.png
+    --> For the 3 most important features:
+        As prcp_sum increases, P(Rainy next week) rises steeply.
+        The model learned the real meteorological relationship.
+
+NATIVE XGBOOST IMPORTANCE
+  04_xgb_native_importance.png
+    --> Gain-based importance: how much each split reduces prediction error.
+
+
+================================================================================
+STREAMLIT APP  (app/streamlit_app.py)
+================================================================================
+
+An interactive web app running at: http://localhost:8501
+
+Features 3 tabs:
+
+TAB 1: Prediction
+  - Sidebar sliders for 11 input values:
+      prcp_sum, tavg_mean, tmax_mean, tmin_mean, prcp_days,
+      lag1_prcp, lag2_prcp, lag1_tavg, lag2_tavg, lag1_prcp_days,
+      week of year
+  - SVG animated gauge showing rain probability (0% to 100%)
+  - Binary verdict: "Dry Week" or "Heavy Rain Week"
+  - Live SHAP waterfall chart showing which inputs drove the prediction
+    (using XGBoost native SHAP values)
+
+TAB 2: Historical Trend
+  - Full 18-year weekly precipitation history chart
+  - Heavy rain weeks highlighted as scatter points
+  - Average temperature trend on secondary panel
+
+TAB 3: Model Info
+  - Live performance metrics (Accuracy, F1, ROC-AUC)
+  - Best hyperparameters from tuning
+  - Full feature list
+
+Run the app with:
+  python -m streamlit run app/streamlit_app.py
+
+
+================================================================================
+FINAL PROJECT STRUCTURE
+================================================================================
+
+214072N_ML_Project/
+|
+|-- data/
+|   |-- daily_colombo_weather.csv          <-- raw input (5,969 daily rows)
+|   |-- processed/
+|       |-- train.csv                      <-- 641 weekly samples
+|       |-- val.csv                        <-- 137 weekly samples
+|       |-- test.csv                       <-- 138 weekly samples
+|       |-- weekly_features.csv            <-- all 916 weeks
+|       |-- metadata.json                  <-- feature names, thresholds, etc.
+|
+|-- models/
+|   |-- xgb_model.pkl                      <-- trained XGBoost model
+|
+|-- reports/
+|   |-- metrics.json                       <-- Accuracy, F1, ROC-AUC
+|   |-- figures/                           <-- 14 plots total
+|       |-- eda_01_missing_values.png
+|       |-- eda_02_time_series.png
+|       |-- eda_03_seasonal_boxplots.png
+|       |-- eda_04_target_distribution.png
+|       |-- eda_05_correlation_heatmap.png
+|       |-- eda_06_feature_distributions.png
+|       |-- 03_confusion_matrices.png
+|       |-- 03_roc_pr_curves.png
+|       |-- 03_xgb_feature_importance.png
+|       |-- 04_shap_bar_global.png
+|       |-- 04_shap_waterfall_tp.png
+|       |-- 04_shap_waterfall_tn.png
+|       |-- 04_pdp_top3_features.png
+|       |-- 04_xgb_native_importance.png
+|
+|-- src/
+|   |-- 01_preprocessing.py
+|   |-- 02_eda.py
+|   |-- 03_train_model.py
+|   |-- 04_explainability.py
+|
+|-- app/
+|   |-- streamlit_app.py
+|
+|-- requirements.txt
+
+
+================================================================================
+HOW TO RUN EVERYTHING (in order)
+================================================================================
+
+  python src/01_preprocessing.py    # raw CSV --> data/processed/*.csv
+  python src/02_eda.py              # --> reports/figures/eda_*.png
+  python src/03_train_model.py      # --> models/xgb_model.pkl + metrics.json
+  python src/04_explainability.py   # --> reports/figures/04_*.png
+  python -m streamlit run app/streamlit_app.py   # --> http://localhost:8501
+
+
+================================================================================
+PIPELINE SUMMARY
+================================================================================
+
+  Raw daily CSV (5,969 rows)
+      |
+      v
+  Imputation + outlier capping
+      |
+      v
+  Weekly aggregation (916 weeks, 14 features)
+      |
+      v
+  Binary target creation (Rainy_Next_Week)
+      |
+      v
+  Chronological 70/15/15 split
+      |
+      v
+  XGBoost Classifier + RandomizedSearchCV (40 iters, 5-fold CV)
+      |
+      v
+  Test ROC-AUC = 0.852  |  Accuracy = 79.7%  |  F1 = 0.787
+      |
+      v
+  SHAP values + PDP (explainability)
+      |
+      v
+  Streamlit web app (interactive predictions + visualisations)
+
+================================================================================

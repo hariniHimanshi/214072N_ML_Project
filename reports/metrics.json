@@ -1,0 +1,45 @@
+{
+  "algorithm": "XGBoostClassifier",
+  "best_cv_roc_auc": 0.7485,
+  "best_params": {
+    "subsample": 0.7,
+    "reg_lambda": 2,
+    "reg_alpha": 0.5,
+    "n_estimators": 300,
+    "min_child_weight": 5,
+    "max_depth": 4,
+    "learning_rate": 0.01,
+    "gamma": 0,
+    "colsample_bytree": 0.7
+  },
+  "validation": {
+    "accuracy": 0.6861,
+    "f1_macro": 0.6703,
+    "f1_dry": 0.5981,
+    "f1_rainy": 0.7425,
+    "roc_auc": 0.7624
+  },
+  "test": {
+    "accuracy": 0.7971,
+    "f1_macro": 0.787,
+    "f1_dry": 0.8333,
+    "f1_rainy": 0.7407,
+    "roc_auc": 0.8516
+  },
+  "feature_cols": [
+    "prcp_sum",
+    "tavg_mean",
+    "tmax_mean",
+    "tmin_mean",
+    "prcp_days",
+    "temp_range",
+    "week_sin",
+    "week_cos",
+    "month",
+    "lag1_prcp",
+    "lag2_prcp",
+    "lag1_tavg",
+    "lag2_tavg",
+    "lag1_prcp_days"
+  ]
+}

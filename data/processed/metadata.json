@@ -1,0 +1,24 @@
+{
+  "scale_pos_weight": 0.82,
+  "feature_cols": [
+    "prcp_sum",
+    "tavg_mean",
+    "tmax_mean",
+    "tmin_mean",
+    "prcp_days",
+    "temp_range",
+    "week_sin",
+    "week_cos",
+    "month",
+    "lag1_prcp",
+    "lag2_prcp",
+    "lag1_tavg",
+    "lag2_tavg",
+    "lag1_prcp_days"
+  ],
+  "target_col": "Rainy_Next_Week",
+  "prcp_threshold_mm": 15.0,
+  "train_rows": 641,
+  "val_rows": 137,
+  "test_rows": 138
+}
