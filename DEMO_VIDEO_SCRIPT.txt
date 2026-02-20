@@ -1,0 +1,233 @@
+================================================================================
+  DEMO VIDEO SCRIPT — Colombo Heavy Rain Predictor (Streamlit App)
+  Target Duration: 3.5 to 4 minutes
+================================================================================
+
+NOTE TO PRESENTER:
+  - Open the app at http://localhost:8501 BEFORE you start recording.
+  - Keep the terminal hidden (alt-tab away from it).
+  - Speak at a calm, steady pace — do not rush.
+  - Each [TIME] marker is a rough guide.
+
+
+================================================================================
+[00:00 - 00:25]  OPENING — What the App Does
+================================================================================
+
+ACTION: Screen shows the full Streamlit app on the Prediction tab.
+        The gauge should be visible with a default probability.
+
+SAY:
+  "Hi, this is my Machine Learning assignment demo for the Colombo
+   Heavy Rain Prediction project.
+
+   The goal of this project is to predict whether the NEXT week in
+   Colombo, Sri Lanka, will experience heavy rainfall — meaning more than
+   15 millimetres of total precipitation — using 18 years of historical
+   weather data from NOAA.
+
+   I built an XGBoost Classifier and wrapped it in this interactive
+   Streamlit web application, which I'll walk you through now."
+
+
+================================================================================
+[00:25 - 01:00]  SIDEBAR — Explaining the Inputs
+================================================================================
+
+ACTION: Point to / hover over the sidebar sliders one by one.
+
+SAY:
+  "On the left side, we have the input panel. This is where you enter
+   the CURRENT week's observed weather data.
+
+   You can adjust:
+   - The week of the year — which captures the seasonal monsoon pattern,
+   - The average, max, and min temperatures for this week,
+   - The total precipitation that has already fallen this week,
+   - And how many days it rained.
+
+   Below that, we have the LAG features — last week's and two weeks ago's
+   rainfall and temperature. These are crucial because rainfall in Colombo
+   tends to persist — a wet week is often followed by another wet week,
+   especially during the monsoon seasons.
+
+   All of these 14 features are fed into the trained XGBoost model."
+
+
+================================================================================
+[01:00 - 01:45]  PREDICTION — Dry Week Scenario
+================================================================================
+
+ACTION: Set sliders to a DRY scenario:
+  - Week of Year      : 5   (early February — dry season)
+  - Avg Temp          : 29.0
+  - Max Temp          : 33.0
+  - Min Temp          : 25.0
+  - This week's PRCP  : 2.0 mm
+  - Rainy days        : 1
+  - Last week PRCP    : 3.0 mm
+  - Two weeks ago PRCP: 1.5 mm
+  - Last week Avg Temp: 29.0
+  - Two weeks ago Temp: 28.5
+  - Rainy days last wk: 1
+
+  The gauge should show LOW probability (green zone).
+
+SAY:
+  "Let me start with a typical DRY season scenario — early February,
+   which falls between Sri Lanka's two monsoon periods.
+
+   I've set this week's rainfall to just 2mm, with only 1 rainy day,
+   and low rainfall in the previous two weeks as well.
+
+   You can see the gauge is pointing well below 50%, showing the model
+   predicts a DRY week ahead — with low rain probability.
+
+   The verdict at the bottom confirms: DRY Week.
+
+   Now let's look at the SHAP explanation on the right — this is the
+   really interesting part..."
+
+
+================================================================================
+[01:45 - 02:30]  SHAP WATERFALL — Explaining the Prediction
+================================================================================
+
+ACTION: Point to the SHAP waterfall chart on the right side of the screen.
+
+SAY:
+  "The bar chart here is called a SHAP Waterfall — it shows exactly
+   WHY the model made this prediction.
+
+   The BLUE bars are features pushing the prediction TOWARD a dry week.
+   The RED bars push it TOWARD a rainy week.
+
+   In this case, you can see that features like low lag1_prcp — meaning
+   little rain last week — and the timing in week 5 — which is the dry
+   season — are the dominant factors pushing this firmly into
+   the 'Dry' category.
+
+   This is what makes SHAP so powerful for explainability. We are not
+   just getting a black-box answer — we can see exactly which inputs
+   drove the model's decision, and in which direction."
+
+
+================================================================================
+[02:30 - 03:05]  PREDICTION — Rainy Week Scenario
+================================================================================
+
+ACTION: Now change sliders to a RAINY scenario:
+  - Week of Year      : 42  (mid-October — peak monsoon)
+  - Avg Temp          : 27.0
+  - Max Temp          : 29.5
+  - Min Temp          : 24.0
+  - This week's PRCP  : 85.0 mm
+  - Rainy days        : 6
+  - Last week PRCP    : 60.0 mm
+  - Two weeks ago PRCP: 45.0 mm
+  - Last week Avg Temp: 27.0
+  - Two weeks ago Temp: 27.5
+  - Rainy days last wk: 5
+
+  The gauge should swing into HIGH probability (blue zone).
+
+SAY:
+  "Now let me simulate the peak of Sri Lanka's northeast monsoon
+   — week 42, which is mid-October.
+
+   I've set this week's total rainfall to 85mm, with 6 out of 7 days
+   being rainy, and similarly heavy rainfall in the past two weeks.
+
+   Watch the gauge — it swings all the way to the right, showing a HIGH
+   probability of heavy rain next week as well.
+
+   The model predicts: Heavy Rain Week.
+
+   And looking at the SHAP chart, the story is now completely reversed —
+   high lag1_prcp and prcp_sum are now the dominant RED features,
+   strongly pushing the prediction toward a rainy outcome.
+
+   The model has clearly learned the persistence of Sri Lanka's
+   monsoon rainfall patterns."
+
+
+================================================================================
+[03:05 - 03:30]  HISTORICAL TREND TAB
+================================================================================
+
+ACTION: Click on the "Historical Trend" tab.
+
+SAY:
+  "Let me quickly show the second tab — the Historical Trend view.
+
+   This chart shows all 18 years of weekly precipitation data from
+   2007 to 2025. The blue dots mark the weeks that were classified
+   as heavy-rain weeks — you can clearly see the recurring spikes
+   during October-December each year, which is Sri Lanka's
+   north-east monsoon.
+
+   The orange line below shows average temperature, which dips
+   slightly during the wet seasons.
+
+   This historical context is what the model was trained on."
+
+
+================================================================================
+[03:30 - 03:55]  MODEL INFO TAB
+================================================================================
+
+ACTION: Click on the "Model Info" tab.
+
+SAY:
+  "Finally, the Model Info tab gives a summary of the model's
+   performance on the held-out test set — data the model
+   never saw during training.
+
+   We achieved:
+   - Test Accuracy of 79.7%,
+   - F1 Score of 0.787, and
+   - ROC-AUC of 0.852.
+
+   An AUC of 0.852 means the model correctly distinguishes between
+   rainy and dry weeks 85% of the time.
+
+   Below that, you can see the best hyperparameters found by
+   RandomizedSearchCV, and the full list of 14 features used."
+
+
+================================================================================
+[03:55 - 04:10]  CLOSING
+================================================================================
+
+ACTION: Scroll back to the Prediction tab.
+
+SAY:
+  "So to summarise — this application takes observed weekly weather
+   inputs, runs them through a tuned XGBoost Classifier, and returns
+   both a rain probability prediction AND a transparent, feature-level
+   explanation of why that prediction was made.
+
+   The combination of strong model performance and built-in explainability
+   through SHAP makes this a practical and interpretable tool for
+   weekly rainfall prediction in Colombo.
+
+   Thank you."
+
+
+================================================================================
+QUICK REFERENCE — Slider Values for the Two Demo Scenarios
+================================================================================
+
+DRY SCENARIO (Week 5 — February):
+  Week of Year: 5   | Avg Temp: 29.0 | Max: 33.0 | Min: 25.0
+  This week PRCP: 2.0 mm | Rainy days: 1
+  Last week PRCP: 3.0 mm | 2wk ago PRCP: 1.5 mm
+  Last week Avg Temp: 29.0 | 2wk ago Temp: 28.5 | Rainy days last wk: 1
+
+RAINY SCENARIO (Week 42 — October, peak monsoon):
+  Week of Year: 42  | Avg Temp: 27.0 | Max: 29.5 | Min: 24.0
+  This week PRCP: 85.0 mm | Rainy days: 6
+  Last week PRCP: 60.0 mm | 2wk ago PRCP: 45.0 mm
+  Last week Avg Temp: 27.0 | 2wk ago Temp: 27.5 | Rainy days last wk: 5
+
+================================================================================
