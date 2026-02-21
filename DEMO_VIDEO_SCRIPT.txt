@@ -8,6 +8,7 @@ NOTE TO PRESENTER:
   - Keep the terminal hidden (alt-tab away from it).
   - Speak at a calm, steady pace — do not rush.
   - Each [TIME] marker is a rough guide.
+  - Predictions update LIVE as you change inputs — no button click needed.
 
 
 ================================================================================
@@ -34,48 +35,65 @@ SAY:
 [00:25 - 01:00]  SIDEBAR — Explaining the Inputs
 ================================================================================
 
-ACTION: Point to / hover over the sidebar sliders one by one.
+ACTION: Point to / hover over the sidebar inputs one by one.
 
 SAY:
-  "On the left side, we have the input panel. This is where you enter
-   the CURRENT week's observed weather data.
+  "On the left side, we have the input panel. The app only asks for
+   RAW weather observations — it does all the feature engineering
+   automatically behind the scenes.
 
-   You can adjust:
-   - The week of the year — which captures the seasonal monsoon pattern,
-   - The average, max, and min temperatures for this week,
-   - The total precipitation that has already fallen this week,
-   - And how many days it rained.
+   At the top, there's a DATE PICKER. When I pick a date, the app
+   automatically derives the Week of Year, Month, and seasonal
+   sin/cos features — you can see them appear as small blue pills
+   right below.
 
-   Below that, we have the LAG features — last week's and two weeks ago's
-   rainfall and temperature. These are crucial because rainfall in Colombo
-   tends to persist — a wet week is often followed by another wet week,
-   especially during the monsoon seasons.
+   Next, under 'This Week's Observations', I enter the current week's
+   total rainfall in millimetres, the average, highest, and lowest
+   temperatures, and the number of rainy days. Notice the Temp Range
+   pill that appears automatically — it's computed from max minus min.
 
-   All of these 14 features are fed into the trained XGBoost model."
+   Below that, under 'Last Week's Observations', I enter last week's
+   rainfall, average temperature, and rainy days.
+
+   And finally, under 'Two Weeks Ago', just the rainfall and
+   average temperature.
+
+   That's only 10 raw inputs total — the app computes all 14 model
+   features automatically. And predictions update LIVE as I change
+   any value — there's no submit button needed.
+
+   In a real-world deployment, these inputs wouldn't need to be
+   entered manually — they could be fetched automatically from a
+   weather API like OpenWeatherMap or the Sri Lanka Meteorological
+   Department's API. But for this demo, we enter them manually to
+   show how the model responds to different scenarios."
 
 
 ================================================================================
 [01:00 - 01:45]  PREDICTION — Dry Week Scenario
 ================================================================================
 
-ACTION: Set sliders to a DRY scenario:
-  - Week of Year      : 5   (early February — dry season)
-  - Avg Temp          : 29.0
-  - Max Temp          : 33.0
-  - Min Temp          : 25.0
-  - This week's PRCP  : 2.0 mm
-  - Rainy days        : 1
-  - Last week PRCP    : 3.0 mm
-  - Two weeks ago PRCP: 1.5 mm
+ACTION: Set inputs to a DRY scenario:
+  - Date picker       : pick a date in early February (e.g., 2026-02-05)
+  - Total Rainfall    : 2.0 mm
+  - Average Temp      : 29.0
+  - Highest Temp      : 33.0
+  - Lowest Temp       : 25.0
+  - Rainy days slider : 1
+  - Last week Rainfall: 3.0 mm
   - Last week Avg Temp: 29.0
-  - Two weeks ago Temp: 28.5
   - Rainy days last wk: 1
+  - 2wk ago Rainfall  : 1.5 mm
+  - 2wk ago Avg Temp  : 28.5
 
   The gauge should show LOW probability (green zone).
+  The auto-derived pills should show Week 6, Month 2.
 
 SAY:
-  "Let me start with a typical DRY season scenario — early February,
-   which falls between Sri Lanka's two monsoon periods.
+  "Let me start with a typical DRY season scenario. I'll pick a date in
+   early February — which falls between Sri Lanka's two monsoon periods.
+
+   You can see the blue pills automatically show Week 6, Month 2.
 
    I've set this week's rainfall to just 2mm, with only 1 rainy day,
    and low rainfall in the previous two weeks as well.
@@ -83,7 +101,7 @@ SAY:
    You can see the gauge is pointing well below 50%, showing the model
    predicts a DRY week ahead — with low rain probability.
 
-   The verdict at the bottom confirms: DRY Week.
+   The verdict at the bottom confirms: Dry Week.
 
    Now let's look at the SHAP explanation on the right — this is the
    really interesting part..."
@@ -102,10 +120,10 @@ SAY:
    The BLUE bars are features pushing the prediction TOWARD a dry week.
    The RED bars push it TOWARD a rainy week.
 
-   In this case, you can see that features like low lag1_prcp — meaning
-   little rain last week — and the timing in week 5 — which is the dry
-   season — are the dominant factors pushing this firmly into
-   the 'Dry' category.
+   In this case, you can see that features like low Last Week Rainfall
+   — meaning little rain last week — and the seasonal timing
+   in February — which is the dry season — are the dominant factors
+   pushing this firmly into the 'Dry' category.
 
    This is what makes SHAP so powerful for explainability. We are not
    just getting a black-box answer — we can see exactly which inputs
@@ -116,24 +134,28 @@ SAY:
 [02:30 - 03:05]  PREDICTION — Rainy Week Scenario
 ================================================================================
 
-ACTION: Now change sliders to a RAINY scenario:
-  - Week of Year      : 42  (mid-October — peak monsoon)
-  - Avg Temp          : 27.0
-  - Max Temp          : 29.5
-  - Min Temp          : 24.0
-  - This week's PRCP  : 85.0 mm
-  - Rainy days        : 6
-  - Last week PRCP    : 60.0 mm
-  - Two weeks ago PRCP: 45.0 mm
+ACTION: Now change inputs to a RAINY scenario:
+  - Date picker       : pick a date in mid-October (e.g., 2025-10-16)
+  - Total Rainfall    : 85.0 mm
+  - Average Temp      : 27.0
+  - Highest Temp      : 29.5
+  - Lowest Temp       : 24.0
+  - Rainy days slider : 6
+  - Last week Rainfall: 60.0 mm
   - Last week Avg Temp: 27.0
-  - Two weeks ago Temp: 27.5
   - Rainy days last wk: 5
+  - 2wk ago Rainfall  : 45.0 mm
+  - 2wk ago Avg Temp  : 27.5
 
   The gauge should swing into HIGH probability (blue zone).
+  The auto-derived pills should show Week 42, Month 10.
 
 SAY:
-  "Now let me simulate the peak of Sri Lanka's northeast monsoon
-   — week 42, which is mid-October.
+  "Now let me simulate the peak of Sri Lanka's northeast monsoon.
+   I'll pick a date in mid-October.
+
+   Notice the pills now show Week 42, Month 10 — and the prediction
+   updates instantly as I change each value.
 
    I've set this week's total rainfall to 85mm, with 6 out of 7 days
    being rainy, and similarly heavy rainfall in the past two weeks.
@@ -144,8 +166,8 @@ SAY:
    The model predicts: Heavy Rain Week.
 
    And looking at the SHAP chart, the story is now completely reversed —
-   high lag1_prcp and prcp_sum are now the dominant RED features,
-   strongly pushing the prediction toward a rainy outcome.
+   high Last Week Rainfall and Total Rainfall are now the dominant RED
+   features, strongly pushing the prediction toward a rainy outcome.
 
    The model has clearly learned the persistence of Sri Lanka's
    monsoon rainfall patterns."
@@ -155,7 +177,7 @@ SAY:
 [03:05 - 03:30]  HISTORICAL TREND TAB
 ================================================================================
 
-ACTION: Click on the "Historical Trend" tab.
+ACTION: Click on the "📈 Historical Trend" tab.
 
 SAY:
   "Let me quickly show the second tab — the Historical Trend view.
@@ -176,7 +198,7 @@ SAY:
 [03:30 - 03:55]  MODEL INFO TAB
 ================================================================================
 
-ACTION: Click on the "Model Info" tab.
+ACTION: Click on the "ℹ️ Model Info" tab.
 
 SAY:
   "Finally, the Model Info tab gives a summary of the model's
@@ -192,20 +214,23 @@ SAY:
    rainy and dry weeks 85% of the time.
 
    Below that, you can see the best hyperparameters found by
-   RandomizedSearchCV, and the full list of 14 features used."
+   RandomizedSearchCV, and a table showing exactly which raw inputs
+   map to which engineered model features."
 
 
 ================================================================================
 [03:55 - 04:10]  CLOSING
 ================================================================================
 
-ACTION: Scroll back to the Prediction tab.
+ACTION: Click back to the "🔮 Prediction" tab.
+        Optionally expand the "Auto-computed features" expander briefly.
 
 SAY:
   "So to summarise — this application takes observed weekly weather
-   inputs, runs them through a tuned XGBoost Classifier, and returns
-   both a rain probability prediction AND a transparent, feature-level
-   explanation of why that prediction was made.
+   inputs, automatically engineers all 14 model features from just
+   10 raw values, runs them through a tuned XGBoost Classifier, and
+   returns both a rain probability prediction AND a transparent,
+   feature-level explanation of why that prediction was made.
 
    The combination of strong model performance and built-in explainability
    through SHAP makes this a practical and interpretable tool for
@@ -215,19 +240,21 @@ SAY:
 
 
 ================================================================================
-QUICK REFERENCE — Slider Values for the Two Demo Scenarios
+QUICK REFERENCE — Input Values for the Two Demo Scenarios
 ================================================================================
 
-DRY SCENARIO (Week 5 — February):
-  Week of Year: 5   | Avg Temp: 29.0 | Max: 33.0 | Min: 25.0
-  This week PRCP: 2.0 mm | Rainy days: 1
-  Last week PRCP: 3.0 mm | 2wk ago PRCP: 1.5 mm
-  Last week Avg Temp: 29.0 | 2wk ago Temp: 28.5 | Rainy days last wk: 1
+DRY SCENARIO (February — dry season):
+  Date picker       : 2026-02-05 (Week 6, Month 2)
+  Total Rainfall    : 2.0 mm    | Avg Temp: 29.0 | Max: 33.0 | Min: 25.0
+  Rainy days        : 1
+  Last week Rainfall: 3.0 mm    | Last week Avg Temp: 29.0 | Rainy days: 1
+  2wk ago Rainfall  : 1.5 mm    | 2wk ago Avg Temp: 28.5
 
-RAINY SCENARIO (Week 42 — October, peak monsoon):
-  Week of Year: 42  | Avg Temp: 27.0 | Max: 29.5 | Min: 24.0
-  This week PRCP: 85.0 mm | Rainy days: 6
-  Last week PRCP: 60.0 mm | 2wk ago PRCP: 45.0 mm
-  Last week Avg Temp: 27.0 | 2wk ago Temp: 27.5 | Rainy days last wk: 5
+RAINY SCENARIO (October — peak monsoon):
+  Date picker       : 2025-10-16 (Week 42, Month 10)
+  Total Rainfall    : 85.0 mm   | Avg Temp: 27.0 | Max: 29.5 | Min: 24.0
+  Rainy days        : 6
+  Last week Rainfall: 60.0 mm   | Last week Avg Temp: 27.0 | Rainy days: 5
+  2wk ago Rainfall  : 45.0 mm   | 2wk ago Avg Temp: 27.5
 
 ================================================================================
