@@ -58,10 +58,6 @@ def load_weekly():
         parse_dates=["week_start"]
     )
 
-
-# =============================================================================
-# Feature Engineering  (mirrors 01_preprocessing.py logic)
-# =============================================================================
 def engineer_features(
     input_date,          # datetime.date — the Monday of the current week
     prcp_sum,            # this week's total rainfall (mm)
@@ -196,6 +192,10 @@ h1, h2, h3 { color: #7ec8f4 !important; }
     width: 100%;
 }
 .stButton > button:hover { opacity: 0.88; }
+[data-testid="stToolbar"] { display: none !important; }
+.stDeployButton { display: none !important; }
+#MainMenu { visibility: hidden; }
+header { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -205,7 +205,7 @@ h1, h2, h3 { color: #7ec8f4 !important; }
 # =============================================================================
 with st.sidebar:
     st.markdown("## 🌦️ Enter Weather Observations")
-    st.markdown("Fill in **raw observed values** — the app computes all engineered features automatically.")
+    st.markdown("Fill in **raw observed values**.")
     st.markdown("---")
 
     # ── Date picker (replaces week_of_year slider)
@@ -223,8 +223,7 @@ with st.sidebar:
 
     st.markdown(
         f'<span class="derived-pill">Week {week_of_year}</span>'
-        f'<span class="derived-pill">Month {month_val}</span>'
-        f'<span class="derived-pill">sin={week_sin:.2f} cos={week_cos:.2f}</span>',
+        f'<span class="derived-pill">Month {month_val}</span>',
         unsafe_allow_html=True
     )
 
@@ -261,7 +260,6 @@ with st.sidebar:
     lag2_tavg = st.number_input("Average Temperature 2 weeks ago (°C)", min_value=18.0, max_value=38.0, value=27.0, step=0.1)
 
     st.markdown("---")
-    predict_btn = st.button("🔮 Predict Next Week's Rainfall")
 
 
 # =============================================================================
@@ -271,7 +269,7 @@ st.markdown("# 🌧️ Colombo Heavy Rain Predictor")
 st.markdown(
     "Predicts whether **next week will be a heavy-rain week** (total precipitation > 15 mm) "
     "using an XGBoost Classifier trained on 18 years of NOAA data.  \n"
-    "Just enter your **raw weather observations** — all feature engineering happens automatically."
+    "Just enter your **raw weather observations**."
 )
 st.markdown("---")
 
@@ -345,6 +343,25 @@ with tab1:
                 feats   = [meta["feature_cols"][i] for i in order]
                 vals    = shap_row[order]
 
+                # Human-readable labels for the chart
+                FRIENDLY_NAMES = {
+                    "prcp_sum":       "🌧️ Total Rainfall (mm)",
+                    "tavg_mean":      "🌡️ Avg Temperature",
+                    "tmax_mean":      "🌡️ Max Temperature",
+                    "tmin_mean":      "🌡️ Min Temperature",
+                    "prcp_days":      "🌧️ Rainy Day Count",
+                    "temp_range":     "🌡️ Temp Range (max−min)",
+                    "week_sin":       "📅 Season (sin cycle)",
+                    "week_cos":       "📅 Season (cos cycle)",
+                    "month":          "📅 Month of Year",
+                    "lag1_prcp":      "🌧️ Last Week Rainfall",
+                    "lag2_prcp":      "🌧️ 2 Weeks Ago Rainfall",
+                    "lag1_tavg":      "🌡️ Last Week Avg Temp",
+                    "lag2_tavg":      "🌡️ 2 Weeks Ago Avg Temp",
+                    "lag1_prcp_days": "🌧️ Last Week Rainy Days",
+                }
+                friendly_feats = [FRIENDLY_NAMES.get(f, f) for f in feats]
+
                 running = bias_val
                 starts, ends = [], []
                 for v in vals:
@@ -357,15 +374,15 @@ with tab1:
                 ax.spines[:].set_color("#444")
 
                 POS_C, NEG_C = "#d73027", "#4575b4"
-                for i, (feat, v, s, e) in enumerate(zip(feats, vals, starts, ends)):
+                for i, (feat, v, s, e) in enumerate(zip(friendly_feats, vals, starts, ends)):
                     c = POS_C if v > 0 else NEG_C
                     ax.barh(i, abs(v), left=min(s, e), color=c,
                             edgecolor="none", height=0.55)
                     ax.text(max(s, e) + 0.004, i, f"{v:+.3f}",
                             va="center", fontsize=8, color="#eee")
 
-                ax.set_yticks(range(len(feats)))
-                ax.set_yticklabels(feats, fontsize=8.5, color="#ddd")
+                ax.set_yticks(range(len(friendly_feats)))
+                ax.set_yticklabels(friendly_feats, fontsize=8.5, color="#ddd")
                 ax.axvline(0, color="#888", linewidth=0.8, linestyle="--")
                 ax.set_xlabel("SHAP value (log-odds contribution)", color="#aaa")
                 ax.set_title("Feature contributions for this prediction",
